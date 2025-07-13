@@ -300,8 +300,8 @@ def create_transaction():
     # Setup Midtrans
     snap = midtransclient.Snap(
         is_production=False,
-        server_key="SB-Mid-server-_yOgi1TDRZ2ClPhC2RCpREpt",
-        client_key="SB-Mid-client-94-4IddkcJkRPuhR"
+        server_key="Mid-server-V6TOVXbHmz0EShE5YRE-fEtd",
+        client_key="Mid-client-M1y3_j8YFofqW6ao"
     )
     param = {
         "transaction_details": {
