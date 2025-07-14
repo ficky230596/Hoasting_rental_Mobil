@@ -163,7 +163,7 @@ $(document).ready(function () {
         .text("");
   
     $.ajax({
-        url: "/register",
+        url: "/api/register",
         type: "post",
         data: formData,
         contentType: false,
