@@ -165,22 +165,20 @@ def filter_mobil():
 def search_mobil():
     search = request.args.get('search')
     logger.info(f'Search: {search}')
-
     query = {'status': 'Tersedia', 'visibility': 'visible'}
     if search:
-        search_regex = {'$regex': search, '$options': 'i'}  # Case-insensitive
+        search_regex = {'$regex': search, '$options': 'i'}
         query['$or'] = [
             {'type_mobil': search_regex},
             {'merek': search_regex},
             {'transmisi': search_regex},
-            {'seat': {'$eq': int(search) if search.isdigit() else -1}},  # Hanya jika input adalah angka
-            {'harga': {'$eq': int(search) if search.isdigit() else -1}}
+            {'bahan_bakar': search_regex},
+            {'seat': {'$eq': search if search.isdigit() else -1}},
+            {'harga': {'$eq': search if search.isdigit() else -1}}  # Gunakan string untuk harga
         ]
-
     data_mobil = list(db.dataMobil.find(query))
     for mobil in data_mobil:
         mobil['_id'] = str(mobil['_id'])
-
     return jsonify(data_mobil)
 
 
