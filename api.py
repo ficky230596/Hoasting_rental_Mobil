@@ -182,7 +182,7 @@ def send_fonnte_message(
 def cancel_unpaid_transactions():
     while True:
         now = datetime.now()
-        time_limit = now - timedelta(minutes=2)
+        time_limit = now - timedelta(minutes=15)
         unpaid_transactions = db.transaction.find({
             "status": "unpaid",
             "created_at": {"$lt": time_limit},
