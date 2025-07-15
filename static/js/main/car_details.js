@@ -1,6 +1,8 @@
-// Variabel global untuk menyimpan id_mobil, user_id, dan data lokasi
+// Variabel global untuk menyimpan id_mobil dan user_id
 let currentIdMobil;
 let currentUserId;
+
+// Variabel untuk peta
 let map;
 let marker;
 let officeMarker;
@@ -40,13 +42,15 @@ function hitungTotalHarga() {
         // Validasi biaya pengantaran maksimum
         const MAX_DELIVERY_COST = 200000;
         if (deliveryCost > MAX_DELIVERY_COST) {
-            toastr.error(`Biaya pengantaran (Rp ${deliveryCost.toLocaleString('id-ID')}) melebihi batas maksimum.`, 'Error');
+            console.error('Biaya pengantaran tidak valid:', deliveryCost);
+            toastr.error(`Biaya pengantaran (Rp ${deliveryCost.toLocaleString('id-ID')}) melebihi batas maksimum. Silakan pilih lokasi lain.`, 'Error');
             resetDeliveryInfo();
             return;
         }
     }
     let totalHarga = (hargaPerHari * hari) + hargaSopir + deliveryCost;
 
+    // Logging untuk debugging
     console.log('Hari:', hari, 'Harga Sopir:', hargaSopir, 'Delivery Cost:', deliveryCost, 'Total:', totalHarga);
 
     totalPriceElement.innerText = `Total Harga: Rp ${totalHarga.toLocaleString('id-ID')}`;
@@ -82,7 +86,7 @@ function initMap() {
         }
     });
 
-    document.getElementById('map-confirm-btn').disabled = true;
+    document.querySelector('#mapModal .btn-primary').disabled = true;
 }
 
 // Tempatkan marker di lokasi yang dipilih
@@ -163,11 +167,8 @@ function updateDeliveryInfo(latlng) {
         return;
     }
 
+    // Log koordinat untuk debugging
     console.log('Koordinat yang dipilih:', latlng);
-
-    // Simpan koordinat ke input tersembunyi
-    document.getElementById('delivery-lat').value = latlng.lat;
-    document.getElementById('delivery-lng').value = latlng.lng;
 
     fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`)
         .then(response => {
@@ -175,12 +176,6 @@ function updateDeliveryInfo(latlng) {
             return response.json();
         })
         .then(data => {
-            const city = data.address.city || data.address.town || data.address.village;
-            if (city && !city.toLowerCase().includes('manado')) {
-                toastr.error('Lokasi di luar wilayah Manado.', 'Error');
-                resetDeliveryInfo();
-                return;
-            }
             document.getElementById('delivery-location').value = data.display_name || `Koordinat: ${latlng.lat}, ${latlng.lng}`;
             const distance = haversineDistance(OFFICE_LOCATION, latlng);
             document.getElementById('delivery-distance').value = distance.toFixed(2) + ' km';
@@ -199,12 +194,13 @@ function updateDeliveryInfo(latlng) {
             document.getElementById('delivery-cost').value = 'Rp ' + deliveryCost.toLocaleString('id-ID');
             document.getElementById('delivery-info').style.display = 'block';
             document.getElementById('use-delivery').style.display = 'block';
-            document.getElementById('map-confirm-btn').disabled = false;
+            document.querySelector('#mapModal .btn-primary').disabled = false;
 
             hitungTotalHarga();
         })
         .catch(error => {
             console.error('Error reverse geocoding:', error);
+            toastr.error(`Gagal mendapatkan alamat: ${error.message}. Silakan coba lagi.`, 'Error');
             document.getElementById('delivery-location').value = `Koordinat: ${latlng.lat}, ${latlng.lng}`;
             const distance = haversineDistance(OFFICE_LOCATION, latlng);
             document.getElementById('delivery-distance').value = distance.toFixed(2) + ' km';
@@ -223,7 +219,7 @@ function updateDeliveryInfo(latlng) {
             document.getElementById('delivery-cost').value = 'Rp ' + deliveryCost.toLocaleString('id-ID');
             document.getElementById('delivery-info').style.display = 'block';
             document.getElementById('use-delivery').style.display = 'block';
-            document.getElementById('map-confirm-btn').disabled = false;
+            document.querySelector('#mapModal .btn-primary').disabled = false;
             hitungTotalHarga();
         });
 }
@@ -238,7 +234,7 @@ function openMapPopup(event) {
         map.invalidateSize();
     }, 200);
 
-    document.getElementById('map-confirm-btn').disabled = true;
+    document.querySelector('#mapModal .btn-primary').disabled = true;
 }
 
 // Tutup modal peta
@@ -254,8 +250,6 @@ function closeMapModal() {
 function resetDeliveryInfo() {
     document.getElementById('delivery-distance').value = '';
     document.getElementById('delivery-location').value = '';
-    document.getElementById('delivery-lat').value = '';
-    document.getElementById('delivery-lng').value = '';
     document.getElementById('delivery-cost').value = '';
     document.getElementById('delivery-info').style.display = 'none';
     document.getElementById('use-delivery').style.display = 'none';
@@ -273,7 +267,7 @@ function resetDeliveryInfo() {
 // Fungsi untuk membuat transaksi dengan animasi loading
 function createTransaction(id_mobil, user_id) {
     $('#btn_pesan').attr('disabled', true);
-    $('#rentalModal').modal('hide');
+    $('#rentalModal').modal('hide'); // Tutup modal rental
 
     // Ambil data transaksi
     var hari = $("#hari").val();
@@ -282,8 +276,6 @@ function createTransaction(id_mobil, user_id) {
     var totalHarga = $("#total_price").text().replace(/\D/g, '');
     var deliveryCost = parseInt($("#delivery-cost").val().replace(/\D/g, '')) || 0;
     var deliveryLocation = $("#delivery-location").val();
-    var lat = $("#delivery-lat").val();
-    var lng = $("#delivery-lng").val();
 
     // Validasi data
     if (!hari || parseInt(hari) < 1) {
@@ -291,8 +283,8 @@ function createTransaction(id_mobil, user_id) {
         $('#btn_pesan').attr('disabled', false);
         return;
     }
-    if (gunakanPengantaran && (!deliveryLocation || !lat || !lng)) {
-        toastr.error('Lokasi pengantaran dan koordinat tidak boleh kosong.', 'Error');
+    if (gunakanPengantaran && !deliveryLocation) {
+        toastr.error('Lokasi pengantaran tidak boleh kosong.', 'Error');
         $('#btn_pesan').attr('disabled', false);
         return;
     }
@@ -305,9 +297,7 @@ function createTransaction(id_mobil, user_id) {
         gunakan_pengantaran: gunakanPengantaran,
         total_harga: totalHarga,
         delivery_cost: deliveryCost,
-        delivery_location: deliveryLocation,
-        lat,
-        lng
+        delivery_location: deliveryLocation
     });
 
     // Tampilkan spinner dan pesan loading
@@ -340,11 +330,9 @@ function createTransaction(id_mobil, user_id) {
             gunakan_pengantaran: gunakanPengantaran,
             total_harga: totalHarga,
             delivery_cost: deliveryCost,
-            delivery_location: deliveryLocation,
-            lat: lat,
-            lng: lng
+            delivery_location: deliveryLocation
         },
-        timeout: 70000,
+        timeout: 70000, // Timeout 70 detik untuk menangani delay 60 detik
         success: function (response) {
             spinner.hide();
             loadingMessage.hide();

@@ -69,8 +69,6 @@ def send_fonnte_message(
     gunakan_pengantaran: bool = False,
     delivery_cost: int = 0,
     delivery_location: str = "",
-    lat: float = None,
-    lng: float = None,
     is_admin: bool = False,
 ) -> bool:
     logger.info(f"Mengirim pesan untuk order_id: {order_id}, gunakan_pengantaran: {gunakan_pengantaran}, delivery_location: {delivery_location}")
@@ -121,11 +119,9 @@ def send_fonnte_message(
     ]
 
     if gunakan_pengantaran:
-        google_maps_link = f"https://www.google.com/maps?q={lat},{lng}" if lat and lng else "Link tidak tersedia"
         message_lines.extend([
             f"- Biaya Pengantaran: {delivery_cost_formatted}",
             f"- Lokasi Pengantaran: {delivery_location}",
-            f"- Google Maps: {google_maps_link}",
         ])
 
     message_lines.append("- Status Pembayaran: Sudah Bayar")

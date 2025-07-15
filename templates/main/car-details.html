@@ -6,7 +6,7 @@
     integrity="sha512-tS3S5qG0BlhnQROyJXvNjeEM4UpMXHrQfTGmbQ1gKmelCxlSEBUaxhRBj/EFTzpbP4RVSrpEikbmdJobCvhE3g=="
     crossorigin="anonymous" referrerpolicy="no-referrer" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.theme.default.css"
-    integrity="sha512-OTcub78R3msOCtY3Tc6FzeDJ8N9qvQn1Ph49ou13 thatxgA9VsH9+LRxoFU6EqLhW4+PKRfU+/HReXmSZXHEkpYoOA=="
+    integrity="sha512-OTcub78R3msOCtY3Tc6FzeDJ8N9qvQn1Ph49ou13xgA9VsH9+LRxoFU6EqLhW4+PKRfU+/HReXmSZXHEkpYoOA=="
     crossorigin="anonymous" referrerpolicy="no-referrer" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/main/home_page.css') }}">
@@ -14,6 +14,18 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/main/car_details.css') }}">
 <!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endblock %}
+
+{% block js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='js/main/maps.js') }}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/owl.carousel.min.js"
+    integrity="sha512-bPs7Ae6pVvhOSiIcyUClR7/q2OAsRiovw4vAkX+zJbw3ShAeeqezq50RIIcIURq7Oa20rW2n2q+fyXBNcU9lrw=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="{{ url_for('static', filename='js/main/car_details.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main/rating.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main/home_page.js') }}"></script>
+
 <style>
     .spinner {
         display: none;
@@ -28,11 +40,17 @@
         height: 60px;
         animation: spin 1s linear infinite;
         z-index: 1050;
+        /* Di atas modal Bootstrap */
     }
 
     @keyframes spin {
-        0% { transform: translate(-50%, -50%) rotate(0deg); }
-        100% { transform: translate(-50%, -50%) rotate(360deg); }
+        0% {
+            transform: translate(-50%, -50%) rotate(0deg);
+        }
+
+        100% {
+            transform: translate(-50%, -50%) rotate(360deg);
+        }
     }
 
     .loading-message {
@@ -48,19 +66,15 @@
         z-index: 1050;
     }
 
-    .error { color: red; }
-    .success { color: green; }
-</style>
-{% endblock %}
+    .error {
+        color: red;
+    }
 
-{% block js %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/owl.carousel.min.js"
-    integrity="sha512-bPs7Ae6pVvhOSiIcyUClR7/q2OAsRiovw4vAkX+zJbw3ShAeeqezq50RIIcIURq7Oa20rW2n2q+fyXBNcU9lrw=="
-    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="{{ url_for('static', filename='js/main/car_details.js') }}"></script>
-<script src="{{ url_for('static', filename='js/main/rating.js') }}"></script>
-<script src="{{ url_for('static', filename='js/main/home_page.js') }}"></script>
+    .success {
+        color: green;
+    }
+</style>
+
 {% endblock %}
 
 {% block content %}
@@ -76,22 +90,47 @@
                     <h3 class="mb-3">{{ data.merek }}</h3>
                     <div class="d-flex align-items-center mt-2">
                         <span class="me-2">Rating:</span>
-                        <div id="rating-stars"></div>
+                        <div class="d-flex">
+                            <div id="rating-stars">
+                                <!-- Stars will be populated by AJAX -->
+                            </div>
+                        </div>
                         <span id="current-rating" class="ms-2">0/5</span>
                     </div>
                     <table class="table">
                         <tbody>
-                            <tr><th scope="row">Type</th><td>{{ data.type_mobil }}</td></tr>
-                            <tr><th scope="row">Bahan Bakar</th><td>{{ data.bahan_bakar }}</td></tr>
-                            <tr><th scope="row">Transmisi</th><td>{{ data.transmisi }}</td></tr>
-                            <tr><th scope="row">Seat</th><td>{{ data.seat }}</td></tr>
-                            <tr><th scope="row">Harga</th><td>Rp {{ data.harga }}</td></tr>
-                            <tr><th scope="row">Status</th><td>{{ data.status }}</td></tr>
+                            <tr>
+                                <th scope="row">Type</th>
+                                <td>{{ data.type_mobil }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Bahan Bakar</th>
+                                <td>{{ data.bahan_bakar }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Transmisi</th>
+                                <td>{{ data.transmisi }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Seat</th>
+                                <td>{{ data.seat }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Harga</th>
+                                <td>Rp {{ data.harga }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Status</th>
+                                <td>{{ data.status }}</td>
+                            </tr>
                         </tbody>
                     </table>
+                    <!-- <p class="mt-4">Audi adalah mobil mewah dengan performa tinggi dan fitur-fitur canggih yang
+                        menawarkan kenyamanan serta keamanan bagi pengemudi dan penumpangnya.</p> -->
                     <div class="text-center mt-4">
                         {% if data.status == 'Tersedia' and user_info %}
-                        <a href="#" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#rentalModal">Rental</a>
+                        <a href="#" class="btn btn-success" data-bs-toggle="modal"
+                            data-bs-target="#rentalModal">Rental</a>
                         {% elif not user_info %}
                         <a href="{{ url_for('login') }}" class="btn btn-warning">Login untuk Rental</a>
                         {% else %}
@@ -103,15 +142,14 @@
         </div>
     </div>
 </div>
-
-<!-- Spinner dan Pesan Loading -->
+<!-- Tambahkan elemen spinner dan pesan loading -->
 <div id="spinner" class="spinner"></div>
 <div id="loading-message" class="loading-message">
     Memeriksa ketersediaan mobil, mohon tunggu... <span id="countdown"></span>
 </div>
-
 <!-- Rental Modal -->
-<div class="modal fade" id="rentalModal" tabindex="-1" role="dialog" aria-labelledby="rentalModalLabel" aria-hidden="true">
+<div class="modal fade" id="rentalModal" tabindex="-1" role="dialog" aria-labelledby="rentalModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -134,12 +172,15 @@
                                 onclick="openMapPopup(event)">Lihat Peta</a>
                         </div>
                         <label id="delivery-info" style="display: none;">
-                            <input id="delivery-distance" placeholder="Jarak Pengantaran" readonly class="form-control" min="1" required>
-                            <input id="delivery-location" placeholder="Lokasi" readonly class="form-control" min="1" required>
-                            <input id="delivery-lat" type="hidden" readonly>
-                            <input id="delivery-lng" type="hidden" readonly>
-                            <input id="delivery-cost" placeholder="Biaya Pengantaran" readonly class="form-control" min="1" required>
-                            <button type="button" class="btn btn-danger mt-2" id="cancel-button" onclick="resetDeliveryInfo()">Batal</button>
+                            <input id="delivery-distance" placeholder="Jarak Pengantaran" readonly class="form-control"
+                                min="1" required>
+                            <input id="delivery-location" placeholder="Lokasi" readonly class="form-control" min="1"
+                                required>
+                            <input id="delivery-cost" placeholder="Biaya Pengantaran" readonly class="form-control"
+                                min="1" required>
+                            <!-- Tombol Batal -->
+                            <button type="button" class="btn btn-danger mt-2" id="cancel-button"
+                                onclick="resetDeliveryInfo()">Batal</button>
                             <div id="use-delivery" style="display: none;">
                                 <label></label>
                             </div>
@@ -156,7 +197,8 @@
                             <li>Mobil harus dikembalikan dalam kondisi yang sama seperti saat disewa.</li>
                             <li>Biaya tambahan akan dikenakan untuk keterlambatan pengembalian.</li>
                             <li>Penyewa bertanggung jawab atas segala kerusakan yang terjadi selama masa sewa.</li>
-                            <li>Penyewa tidak diizinkan untuk mengalihkan penyewaan kepada pihak ketiga tanpa persetujuan.</li>
+                            <li>Penyewa tidak diizinkan untuk mengalihkan penyewaan kepada pihak ketiga tanpa
+                                persetujuan.</li>
                         </ul>
                     </div>
                     <div class="form-check mb-3">
@@ -170,18 +212,21 @@
                     <div class="modal-dialog modal-lg">
                         <div class="modal-content">
                             <div class="modal-header">
-                                <h5 class="modal-title" id="mapModalLabel">Pilih Lokasi Pengantaran Mobil</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                <!-- <h5 class="modal-title" id="mapModalLabel">Pilih Lokasi Pengantaran Mobil</h5> -->
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
                             </div>
                             <div class="modal-body">
                                 <div class="d-flex mb-2">
-                                    <input type="text" id="pac-input" class="form-control me-2" placeholder="Cari lokasi">
-                                    <button class="btn btn-secondary" onclick="findMyLocation()">Lokasi Saya</button>
+                                    <input type="text" id="pac-input" class="form-control me-2"
+                                        placeholder="Cari lokasi">
+                                    <button class="btn btn-secondary" onclick="findMyLocation()">Lokasi Saya
+                                        Saya</button>
                                 </div>
                                 <div id="mapFrame" style="width: 100%; height: 500px;"></div>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-primary" id="map-confirm-btn" onclick="closeMapModal()" disabled>OK</button>
+                                <button type="button" class="btn btn-primary" onclick="closeMapModal()">OK</button>
                             </div>
                         </div>
                     </div>
@@ -189,6 +234,7 @@
             </div>
             <div class="modal-footer">
                 {% if user_info %}
+                <!-- Button Pemesanan -->
                 <button type="button" class="btn btn-primary" id="btn_pesan"
                     onclick="showPasswordVerificationModal('{{ data.id_mobil }}', '{{ user_info.user_id }}')"
                     disabled>Pesan</button>
@@ -202,7 +248,9 @@
                         <form id="passwordVerificationForm">
                             <div class="modal-header">
                                 <h5 class="modal-title" id="passwordVerificationModalLabel">Verifikasi Kata Sandi</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">×</span>
+                                </button>
                             </div>
                             <div class="modal-body">
                                 <div class="form-group">
@@ -211,7 +259,7 @@
                                 </div>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
                                 <button type="submit" class="btn btn-primary">Verifikasi</button>
                             </div>
                         </form>
@@ -223,7 +271,8 @@
 </div>
 
 <!-- Terms Modal -->
-<div class="modal fade" id="termsModal" tabindex="-1" role="dialog" aria-labelledby="termsModalLabel" aria-hidden="true">
+<div class="modal fade" id="termsModal" tabindex="-1" role="dialog" aria-labelledby="termsModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -262,7 +311,7 @@
                         <i class="fa-solid fa-gas-pump pe-2 fs-5"></i>
                         <span>{{dt.bahan_bakar}}</span>
                     </div>
-                    <div class="car-info-item d-fle align-items-center">
+                    <div class="car-info-item d-flex align-items-center">
                         <i class="eicon-transmission pe-2 fs-5"></i>
                         <span>{{dt.transmisi}}</span>
                     </div>
