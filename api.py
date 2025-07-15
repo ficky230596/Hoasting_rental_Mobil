@@ -53,8 +53,6 @@ queue_lock = Lock()
 
 # ------------------- WhatsApp Messaging -------------------
 
-# ------------------- WhatsApp Messaging -------------------
-
 def send_fonnte_message(
     phone: str,
     order_id: str,
@@ -73,7 +71,6 @@ def send_fonnte_message(
     delivery_location: str = "",
     lat: float = None,
     lng: float = None,
-    user_phone: str = None,  # Tambahkan parameter untuk nomor telepon pengguna
     is_admin: bool = False,
 ) -> bool:
     logger.info(f"Mengirim pesan untuk order_id: {order_id}, gunakan_pengantaran: {gunakan_pengantaran}, delivery_location: {delivery_location}")
@@ -122,9 +119,6 @@ def send_fonnte_message(
         f"- Sopir: {sopir_status}",
         f"- Pengantaran: {pengantaran_status}",
     ]
-
-    if is_admin and user_phone:
-        message_lines.append(f"- Nomor Telepon Penyewa: {user_phone}")
 
     if gunakan_pengantaran:
         google_maps_link = f"https://www.google.com/maps?q={lat},{lng}" if lat and lng else "Link tidak tersedia"
@@ -182,7 +176,7 @@ def send_fonnte_message(
 def cancel_unpaid_transactions():
     while True:
         now = datetime.now()
-        time_limit = now - timedelta(minutes=15)
+        time_limit = now - timedelta(minutes=2)
         unpaid_transactions = db.transaction.find({
             "status": "unpaid",
             "created_at": {"$lt": time_limit},
@@ -217,8 +211,6 @@ def create_transaction():
     gunakan_pengantaran = request.form.get("gunakan_pengantaran") == "true"
     delivery_cost = int(request.form.get("delivery_cost", 0)) if gunakan_pengantaran else 0
     delivery_location = request.form.get("delivery_location", "") if gunakan_pengantaran else ""
-    lat = request.form.get("lat")
-    lng = request.form.get("lng")
     client_total_harga = int(request.form.get("total_harga", 0))
 
     # Validasi input
@@ -253,30 +245,6 @@ def create_transaction():
         return jsonify({
             "status": "error",
             "message": "Lokasi pengantaran tidak boleh kosong."
-        }), 400
-
-    if gunakan_pengantaran and (not lat or not lng):
-        logger.error("Koordinat lat/lng tidak boleh kosong jika menggunakan pengantaran.")
-        return jsonify({
-            "status": "error",
-            "message": "Koordinat lat/lng tidak boleh kosong."
-        }), 400
-
-    # Validasi koordinat
-    try:
-        lat = float(lat)
-        lng = float(lng)
-        if not (-90 <= lat <= 90) or not (-180 <= lng <= 180):
-            logger.error(f"Koordinat tidak valid: lat={lat}, lng={lng}")
-            return jsonify({
-                "status": "error",
-                "message": "Koordinat tidak valid."
-            }), 400
-    except (TypeError, ValueError):
-        logger.error(f"Koordinat tidak valid: lat={lat}, lng={lng}")
-        return jsonify({
-            "status": "error",
-            "message": "Koordinat tidak valid."
         }), 400
 
     # Ambil data mobil dan user
@@ -376,8 +344,6 @@ def create_transaction():
         "gunakan_pengantaran": gunakan_pengantaran,
         "delivery_cost": delivery_cost,
         "delivery_location": delivery_location,
-        "lat": lat,
-        "lng": lng,
         "status_mobil": "pembayaran",
         "actual_return_date": None,
         "actual_return_time": None,
@@ -497,7 +463,7 @@ def transaction_success():
     db.dataMobil.update_one({"id_mobil": idcar}, {"$set": data_update})
     db.transaction.update_one({"order_id": orderid}, {"$set": {"status": "sudah bayar"}})
 
-    # Kirim notifikasi WhatsApp ke pengguna
+    # Kirim notifikasi WhatsApp
     user_success = send_fonnte_message(
         phone=user["phone"],
         order_id=transaction["order_id"],
@@ -514,12 +480,9 @@ def transaction_success():
         gunakan_pengantaran=transaction.get("gunakan_pengantaran", False),
         delivery_cost=transaction.get("delivery_cost", 0),
         delivery_location=transaction.get("delivery_location", ""),
-        lat=transaction.get("lat"),
-        lng=transaction.get("lng"),
         is_admin=False,
     )
 
-    # Kirim notifikasi WhatsApp ke admin dengan nomor telepon pengguna
     admin_success = send_fonnte_message(
         phone=ADMIN_PHONE,
         order_id=transaction["order_id"],
@@ -536,9 +499,6 @@ def transaction_success():
         gunakan_pengantaran=transaction.get("gunakan_pengantaran", False),
         delivery_cost=transaction.get("delivery_cost", 0),
         delivery_location=transaction.get("delivery_location", ""),
-        lat=transaction.get("lat"),
-        lng=transaction.get("lng"),
-        user_phone=user.get("phone", "Tidak tersedia"),  # Tambahkan nomor telepon pengguna
         is_admin=True,
     )
 
