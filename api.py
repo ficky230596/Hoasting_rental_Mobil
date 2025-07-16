@@ -8,6 +8,7 @@ import logging
 import midtransclient
 import os
 import requests
+import urllib.parse
 import uuid
 from flask import Blueprint, request, jsonify, current_app
 from requests.adapters import HTTPAdapter
@@ -69,9 +70,11 @@ def send_fonnte_message(
     gunakan_pengantaran: bool = False,
     delivery_cost: int = 0,
     delivery_location: str = "",
+    delivery_lat: float = None,
+    delivery_lon: float = None,
     is_admin: bool = False,
 ) -> bool:
-    logger.info(f"Mengirim pesan untuk order_id: {order_id}, gunakan_pengantaran: {gunakan_pengantaran}, delivery_location: {delivery_location}")
+    logger.info(f"Mengirim pesan untuk order_id: {order_id}, gunakan_pengantaran: {gunakan_pengantaran}, delivery_location: {delivery_location}, delivery_lat: {delivery_lat}, delivery_lon: {delivery_lon}")
     
     if not FONNTE_TOKEN:
         logger.error("Token Fonnte tidak ditemukan.")
@@ -123,6 +126,9 @@ def send_fonnte_message(
             f"- Biaya Pengantaran: {delivery_cost_formatted}",
             f"- Lokasi Pengantaran: {delivery_location}",
         ])
+        if delivery_lat is not None and delivery_lon is not None:
+            google_maps_link = f"https://www.google.com/maps?q={delivery_lat},{delivery_lon}"
+            message_lines.append(f"- Tautan Google Maps: {google_maps_link}")
 
     message_lines.append("- Status Pembayaran: Sudah Bayar")
 
@@ -197,6 +203,45 @@ thread.start()
 
 # ------------------- API Endpoints -------------------
 
+# Endpoint untuk reverse geocoding
+@api.route("/api/reverse_geocode", methods=["GET"])
+def reverse_geocode():
+    try:
+        lat = request.args.get("lat")
+        lon = request.args.get("lon")
+        if not lat or not lon:
+            return jsonify({"status": "error", "message": "Parameter lat dan lon diperlukan"}), 400
+
+        headers = {
+            "User-Agent": "RentalMobilApp/1.0 (fickyrahanubun@gmail.com)"  # Ganti dengan email Anda
+        }
+        url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}"
+        response = requests.get(url, headers=headers, timeout=5)
+        response.raise_for_status()
+        return jsonify(response.json()), 200
+    except requests.RequestException as e:
+        logger.error(f"Error saat reverse geocoding: {str(e)}")
+        return jsonify({"status": "error", "message": f"Gagal mendapatkan alamat: {str(e)}"}), 500
+
+# Endpoint untuk pencarian lokasi
+@api.route("/api/search_geocode", methods=["GET"])
+def search_geocode():
+    try:
+        query = request.args.get("q")
+        if not query:
+            return jsonify({"status": "error", "message": "Parameter query diperlukan"}), 400
+
+        headers = {
+            "User-Agent": "RentalMobilApp/1.0 (your.email@example.com)"  # Ganti dengan email Anda
+        }
+        url = f"https://nominatim.openstreetmap.org/search?format=json&q={urllib.parse.quote(query)}&limit=1"
+        response = requests.get(url, headers=headers, timeout=5)
+        response.raise_for_status()
+        return jsonify(response.json()), 200
+    except requests.RequestException as e:
+        logger.error(f"Error saat pencarian lokasi: {str(e)}")
+        return jsonify({"status": "error", "message": f"Gagal mencari lokasi: {str(e)}"}), 500
+
 @api.route("/api/create_transaction", methods=["POST"])
 def create_transaction():
     global priority_queue
@@ -207,6 +252,8 @@ def create_transaction():
     gunakan_pengantaran = request.form.get("gunakan_pengantaran") == "true"
     delivery_cost = int(request.form.get("delivery_cost", 0)) if gunakan_pengantaran else 0
     delivery_location = request.form.get("delivery_location", "") if gunakan_pengantaran else ""
+    delivery_lat = float(request.form.get("delivery_lat")) if request.form.get("delivery_lat") else None
+    delivery_lon = float(request.form.get("delivery_lon")) if request.form.get("delivery_lon") else None
     client_total_harga = int(request.form.get("total_harga", 0))
 
     # Validasi input
@@ -236,11 +283,11 @@ def create_transaction():
             "message": "Biaya pengantaran tidak valid. Harus 0, 100000, atau 200000."
         }), 400
 
-    if gunakan_pengantaran and not delivery_location:
-        logger.error("Lokasi pengantaran tidak boleh kosong.")
+    if gunakan_pengantaran and (not delivery_location or not delivery_lat or not delivery_lon):
+        logger.error("Lokasi pengantaran atau koordinat tidak lengkap.")
         return jsonify({
             "status": "error",
-            "message": "Lokasi pengantaran tidak boleh kosong."
+            "message": "Lokasi pengantaran dan koordinat (lat, lon) harus diisi."
         }), 400
 
     # Ambil data mobil dan user
@@ -340,6 +387,8 @@ def create_transaction():
         "gunakan_pengantaran": gunakan_pengantaran,
         "delivery_cost": delivery_cost,
         "delivery_location": delivery_location,
+        "delivery_lat": delivery_lat,
+        "delivery_lon": delivery_lon,
         "status_mobil": "pembayaran",
         "actual_return_date": None,
         "actual_return_time": None,
@@ -476,6 +525,8 @@ def transaction_success():
         gunakan_pengantaran=transaction.get("gunakan_pengantaran", False),
         delivery_cost=transaction.get("delivery_cost", 0),
         delivery_location=transaction.get("delivery_location", ""),
+        delivery_lat=transaction.get("delivery_lat", None),
+        delivery_lon=transaction.get("delivery_lon", None),
         is_admin=False,
     )
 
@@ -495,6 +546,8 @@ def transaction_success():
         gunakan_pengantaran=transaction.get("gunakan_pengantaran", False),
         delivery_cost=transaction.get("delivery_cost", 0),
         delivery_location=transaction.get("delivery_location", ""),
+        delivery_lat=transaction.get("delivery_lat", None),
+        delivery_lon=transaction.get("delivery_lon", None),
         is_admin=True,
     )
 
@@ -589,9 +642,6 @@ def confirmKembali():
         "result": "success",
         "status_pengembalian": status_pengembalian
     }), 200
-
-
-
 
 @api.route("/api/check_transaction_status/<order_id>", methods=["GET"])
 def check_transaction_status_by_id(order_id):
@@ -919,6 +969,8 @@ def get_transaction_detail(order_id):
             "gunakan_pengantaran": transaction.get("gunakan_pengantaran", False),
             "delivery_cost": transaction.get("delivery_cost", 0),
             "delivery_location": transaction.get("delivery_location", ""),
+            "delivery_lat": transaction.get("delivery_lat", None),
+            "delivery_lon": transaction.get("delivery_lon", None),
             "profile_image_path": user.get("profile_image_path", "/static/icon/user.jpg"),
             "image_path": user.get("image_path", "/static/icon/user.jpg")
         }
@@ -1049,6 +1101,8 @@ def add_transaction_from_admin():
     gunakan_pengantaran = request.form.get("gunakan_pengantaran") == "true"
     delivery_cost = int(request.form.get("delivery_cost", 0)) if gunakan_pengantaran else 0
     delivery_location = request.form.get("delivery_location", "") if gunakan_pengantaran else ""
+    delivery_lat = float(request.form.get("delivery_lat")) if request.form.get("delivery_lat") else None
+    delivery_lon = float(request.form.get("delivery_lon")) if request.form.get("delivery_lon") else None
 
     # Validasi input
     if not mtd or not id_mobil or not hari or not penyewa:
@@ -1069,11 +1123,11 @@ def add_transaction_from_admin():
             "message": "Jumlah hari tidak valid"
         }), 400
 
-    if gunakan_pengantaran and not delivery_location:
-        logger.error(f"Lokasi pengantaran kosong untuk id_mobil: {id_mobil}")
+    if gunakan_pengantaran and (not delivery_location or not delivery_lat or not delivery_lon):
+        logger.error(f"Lokasi pengantaran atau koordinat tidak lengkap untuk id_mobil: {id_mobil}")
         return jsonify({
             "result": "failed",
-            "message": "Lokasi pengantaran harus diisi jika menggunakan pengantaran"
+            "message": "Lokasi pengantaran dan koordinat (lat, lon) harus diisi jika menggunakan pengantaran"
         }), 400
 
     valid_delivery_costs = [0, 100000, 200000]
@@ -1136,6 +1190,8 @@ def add_transaction_from_admin():
         "gunakan_pengantaran": gunakan_pengantaran,
         "delivery_cost": delivery_cost,
         "delivery_location": delivery_location,
+        "delivery_lat": delivery_lat,
+        "delivery_lon": delivery_lon,
         "status_mobil": "digunakan",
         "created_at": datetime.now()
     }

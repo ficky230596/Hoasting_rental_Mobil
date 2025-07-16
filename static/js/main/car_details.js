@@ -124,9 +124,12 @@ function findMyLocation() {
 
 // Cari lokasi menggunakan Nominatim
 function searchLocation(query) {
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`)
+    fetch(`/api/search_geocode?q=${encodeURIComponent(query)}`)
         .then(response => response.json())
         .then(data => {
+            if (data.status === "error") {
+                throw new Error(data.message);
+            }
             if (data.length > 0) {
                 const latlng = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
                 map.setView(latlng, 12);
@@ -167,15 +170,19 @@ function updateDeliveryInfo(latlng) {
         return;
     }
 
-    // Log koordinat untuk debugging
+    // Simpan koordinat
+    selectedLocation = latlng;
     console.log('Koordinat yang dipilih:', latlng);
 
-    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`)
+    fetch(`/api/reverse_geocode?lat=${latlng.lat}&lon=${latlng.lng}`)
         .then(response => {
             if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
             return response.json();
         })
         .then(data => {
+            if (data.status === "error") {
+                throw new Error(data.message);
+            }
             document.getElementById('delivery-location').value = data.display_name || `Koordinat: ${latlng.lat}, ${latlng.lng}`;
             const distance = haversineDistance(OFFICE_LOCATION, latlng);
             document.getElementById('delivery-distance').value = distance.toFixed(2) + ' km';
@@ -200,7 +207,7 @@ function updateDeliveryInfo(latlng) {
         })
         .catch(error => {
             console.error('Error reverse geocoding:', error);
-            toastr.error(`Gagal mendapatkan alamat: ${error.message}. Silakan coba lagi.`, 'Error');
+            toastr.error(`Gagal mendapatkan alamat: ${error.message}. Menggunakan koordinat sebagai gantinya.`, 'Error');
             document.getElementById('delivery-location').value = `Koordinat: ${latlng.lat}, ${latlng.lng}`;
             const distance = haversineDistance(OFFICE_LOCATION, latlng);
             document.getElementById('delivery-distance').value = distance.toFixed(2) + ' km';
@@ -276,6 +283,8 @@ function createTransaction(id_mobil, user_id) {
     var totalHarga = $("#total_price").text().replace(/\D/g, '');
     var deliveryCost = parseInt($("#delivery-cost").val().replace(/\D/g, '')) || 0;
     var deliveryLocation = $("#delivery-location").val();
+    var deliveryLat = selectedLocation ? selectedLocation.lat : null;
+    var deliveryLon = selectedLocation ? selectedLocation.lng : null;
 
     // Validasi data
     if (!hari || parseInt(hari) < 1) {
@@ -283,8 +292,8 @@ function createTransaction(id_mobil, user_id) {
         $('#btn_pesan').attr('disabled', false);
         return;
     }
-    if (gunakanPengantaran && !deliveryLocation) {
-        toastr.error('Lokasi pengantaran tidak boleh kosong.', 'Error');
+    if (gunakanPengantaran && (!deliveryLocation || !deliveryLat || !deliveryLon)) {
+        toastr.error('Lokasi pengantaran tidak lengkap. Silakan pilih lokasi.', 'Error');
         $('#btn_pesan').attr('disabled', false);
         return;
     }
@@ -297,7 +306,9 @@ function createTransaction(id_mobil, user_id) {
         gunakan_pengantaran: gunakanPengantaran,
         total_harga: totalHarga,
         delivery_cost: deliveryCost,
-        delivery_location: deliveryLocation
+        delivery_location: deliveryLocation,
+        delivery_lat: deliveryLat,
+        delivery_lon: deliveryLon
     });
 
     // Tampilkan spinner dan pesan loading
@@ -330,9 +341,11 @@ function createTransaction(id_mobil, user_id) {
             gunakan_pengantaran: gunakanPengantaran,
             total_harga: totalHarga,
             delivery_cost: deliveryCost,
-            delivery_location: deliveryLocation
+            delivery_location: deliveryLocation,
+            delivery_lat: deliveryLat,
+            delivery_lon: deliveryLon
         },
-        timeout: 70000, // Timeout 70 detik untuk menangani delay 60 detik
+        timeout: 70000,
         success: function (response) {
             spinner.hide();
             loadingMessage.hide();
@@ -356,13 +369,7 @@ function createTransaction(id_mobil, user_id) {
                         $('#btn_pesan').attr('disabled', false);
                     }
                 });
-            } else if (response.status === "error" && xhr.status === 409) {
-                toastr.error(response.message, 'Error', {
-                    onHidden: function () {
-                        window.location.replace('/');
-                    }
-                });
-            } else {
+            } else if (response.status === "error") {
                 toastr.error(response.message, 'Error', {
                     onHidden: function () {
                         $('#btn_pesan').attr('disabled', false);
@@ -380,19 +387,11 @@ function createTransaction(id_mobil, user_id) {
             if (xhr.responseJSON && xhr.responseJSON.message) {
                 errorMsg = xhr.responseJSON.message;
             }
-            if (xhr.status === 409) {
-                toastr.error(errorMsg, 'Error', {
-                    onHidden: function () {
-                        window.location.replace('/');
-                    }
-                });
-            } else {
-                toastr.error(errorMsg, 'Error', {
-                    onHidden: function () {
-                        $('#btn_pesan').attr('disabled', false);
-                    }
-                });
-            }
+            toastr.error(errorMsg, 'Error', {
+                onHidden: function () {
+                    $('#btn_pesan').attr('disabled', false);
+                }
+            });
         }
     });
 }
