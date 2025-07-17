@@ -470,3 +470,4 @@ document.addEventListener("DOMContentLoaded", function () {
         if (openMapButton) openMapButton.focus();
     });
 });
+

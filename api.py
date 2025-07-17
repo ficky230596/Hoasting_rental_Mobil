@@ -3,6 +3,7 @@ from threading import Thread, Lock
 from time import sleep
 import hashlib
 import heapq
+import json
 import jwt
 import logging
 import midtransclient
@@ -178,7 +179,7 @@ def send_fonnte_message(
 def cancel_unpaid_transactions():
     while True:
         now = datetime.now()
-        time_limit = now - timedelta(minutes=2)
+        time_limit = now - timedelta(minutes=10)
         unpaid_transactions = db.transaction.find({
             "status": "unpaid",
             "created_at": {"$lt": time_limit},
@@ -232,7 +233,7 @@ def search_geocode():
             return jsonify({"status": "error", "message": "Parameter query diperlukan"}), 400
 
         headers = {
-            "User-Agent": "RentalMobilApp/1.0 (your.email@example.com)"  # Ganti dengan email Anda
+            "User-Agent": "RentalMobilApp/1.0 (fickyrahanubun@gmail.com)"  # Ganti dengan email Anda
         }
         url = f"https://nominatim.openstreetmap.org/search?format=json&q={urllib.parse.quote(query)}&limit=1"
         response = requests.get(url, headers=headers, timeout=5)
@@ -350,6 +351,7 @@ def create_transaction():
         server_key="SB-Mid-server-_yOgi1TDRZ2ClPhC2RCpREpt",
         client_key="SB-Mid-client-94-4IddkcJkRPuhR"
     )
+
     param = {
         "transaction_details": {
             "order_id": order_id,
@@ -357,11 +359,23 @@ def create_transaction():
         },
         "customer_details": {
             "first_name": data_user["name"],
-            "email": data_user["email"],
+            "email": data_user["email"],  # ← pastikan ini valid
         }
     }
-    transaction = snap.create_transaction(param)
-    transaction_token = transaction["token"]
+
+    try:
+        logger.info(f"Param Midtrans: {json.dumps(param)}")
+        transaction = snap.create_transaction(param)
+        transaction_token = transaction["token"]
+    except Exception as e:
+        logger.error(f"❌ Gagal buat transaksi Midtrans: {e}")
+        return jsonify({
+            "status": "error",
+            "message": "Gagal membuat transaksi Midtrans.",
+            "detail": str(e)
+        }), 500
+
+
 
     # Simpan transaksi ke database
     transaksi = {
