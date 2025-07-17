@@ -6,11 +6,14 @@ from dbconnection import db, ensure_indexes
 from bson import ObjectId
 import jwt
 import os
+from dotenv import load_dotenv
 import hashlib
 import midtransclient
 import random
 import datetime
 from flask_mail import Mail, Message
+
+load_dotenv()  # Memuat variabel lingkungan dari .env
 from func import canceltransaction
 from pymongo import DESCENDING 
 from collections import Counter
