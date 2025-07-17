@@ -12,8 +12,6 @@ import midtransclient
 import random
 import datetime
 from flask_mail import Mail, Message
-
-load_dotenv()  # Memuat variabel lingkungan dari .env
 from func import canceltransaction
 from pymongo import DESCENDING 
 from collections import Counter
@@ -22,7 +20,7 @@ from collections import defaultdict
 from datetime import timedelta  
 import logging  # Impor modul logging
 ensure_indexes()
-
+load_dotenv()  # Memuat variabel lingkungan dari .env
 SECRET_KEY = os.environ.get("SECRET_KEY")
 
 # Konfigurasi logging
