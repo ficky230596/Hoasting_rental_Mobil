@@ -215,7 +215,7 @@ def cancel_unpaid_transactions():
     )
     while True:
         now = datetime.now()
-        time_limit = now - timedelta(minutes=10)
+        time_limit = now - timedelta(minutes=5)
         unpaid_transactions = db.transaction.find(
             {
                 "status": "unpaid",
