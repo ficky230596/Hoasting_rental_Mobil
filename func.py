@@ -36,7 +36,9 @@ def canceltransaction(order_id, msg):
             )
 
         # Panggil API Midtrans untuk membatalkan transaksi
-        url = f"https://api.midtrans.com/v2/{order_id}/cancel"  # URL produksi
+        is_sandbox = os.environ.get("MIDTRANS_ENV", "production") == "sandbox"
+        base_url = "https://api.sandbox.midtrans.com" if is_sandbox else "https://api.midtrans.com"
+        url = f"{base_url}/v2/{order_id}/cancel"
         server_key = os.environ.get("MIDTRANS_SERVER_KEY")
         client_key = os.environ.get("MIDTRANS_CLIENT_KEY")
         auth_string = f"{server_key}:{client_key}"
