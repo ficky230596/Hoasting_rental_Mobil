@@ -567,12 +567,10 @@ def payment(id):
     try:
         data = db.transaction.find_one({'order_id': id})
 
-        # CEK JIKA TRANSAKSI SUDAH DIBATALKAN
         if not data or data['status'] == 'canceled':
             flash('Transaksi telah dibatalkan dan tidak dapat dilanjutkan.', 'error')
             return redirect(url_for('transaksiUser'))
 
-        # CEK MOBIL SUDAH DISEWA ATAU BELUM
         data_mobil = db.dataMobil.find_one({'id_mobil': data['id_mobil']})
         if data_mobil['status'] in ['Diproses', 'Digunakan']:
             canceltransaction(order_id=data['order_id'], msg='Sudah ada transaksi lain')
@@ -582,9 +580,18 @@ def payment(id):
         user_info = db.users.find_one({"user_id": payload["user_id"]})
         if user_info['verif'] != 'verifed':
             return redirect(url_for('verify_email'))
-        
-        token = data['transaction_token']
-        return render_template('main/payment.html', data=data, user_info=user_info)
+
+        # Tambahan untuk deteksi lingkungan
+        is_sandbox = os.environ.get("MIDTRANS_ENV") == "sandbox"
+        client_key = os.environ.get("MIDTRANS_CLIENT_KEY")
+
+        return render_template(
+            'main/payment.html',
+            data=data,
+            user_info=user_info,
+            is_sandbox=is_sandbox,
+            client_key=client_key
+        )
 
     except jwt.ExpiredSignatureError:
         msg = createSecreteMassage('Akses transaksi login terlebih dahulu')
@@ -592,6 +599,7 @@ def payment(id):
     except jwt.exceptions.DecodeError:
         msg = createSecreteMassage('Akses transaksi login terlebih dahulu')
         return redirect(url_for('login', msg=msg))
+
 
     
 @app.route('/detail-mobil')
